@@ -9,11 +9,11 @@ class ParallelHistogram:
 
     The usual life-cycle of this class is:
 
-    * create an instance of the class
+    * create an instance of the class (on each process if in parallel)
 
-    * repeatedly call ``add_data`` on it to add data points
+    * repeatedly call ``add_data`` or ``add_datum`` on it to add new data points
 
-    * call ``collect``
+    * call ``collect``, (supplying in MPI communicator if in parallel)
 
     You can also call the ``run`` method with an iterator to combine these.
 
