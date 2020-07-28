@@ -1,0 +1,5 @@
+build/
+.pytest_cache/
+dist/
+parallel_statistics.egg-info/
+__pycache__

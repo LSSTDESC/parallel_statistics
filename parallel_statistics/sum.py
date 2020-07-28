@@ -1,0 +1,133 @@
+import numpy as np
+from .sparse import SparseArray
+from .tools import AllOne, in_place_reduce
+
+class ParallelSum:
+    """Sum up values in pixels in parallel, on-line.
+
+    See ParallelStatsCalculator for details of the motivation.
+    Like that code you can specify sparse if only a few pixels
+    will be hit.
+
+    The usual life-cycle of this class is to create it,
+    repeatedly call add_data on chunks, and then call
+    collect to finalize. You can also call the "run"
+    method with an iterator to combine these.
+
+    Unlike that class you cannot yet supply weights here, since
+    we have not yet needed that use case.
+    """
+    def __init__(self, size, sparse=False):
+        """Create the calculator
+
+        Parameters
+        ----------
+        size: int
+            The maximum number of bins or pixels
+        sparse: bool, optional
+            If True, use sparse arrays to minimize memory usage
+        """
+        self.size = size
+        self.sparse = sparse
+
+        if sparse:
+            t = SparseArray
+        else:
+            t = np.zeros
+
+        self._sum = t(size)
+        self._weight = t(size)
+
+    def add_datum(self, bin, value, weight):
+        """Add a single data point to the sum.
+
+        Parameters
+        ----------
+        bin: int
+            Index of bin or pixel these value apply to
+        value: float
+            Value for this bin to accumulate
+        """
+        if weight is None:
+            weight = 1
+
+        for value in values:
+            self._weight[bin] += weight
+            self._sum[bin] += value
+
+    def add_data(self, bin, values, weights=None):
+        """Add a chunk of data to the sum.
+
+        Parameters
+        ----------
+        bin: int
+            Index of bin or pixel these value apply to
+        values: sequence
+            Values for this bin to accumulate
+        weights: sequence
+            Optional, weights per value
+        """
+        if weights is None:
+            weights = AllOne()
+        for value in values:
+            self._weight[bin] += weights[bin]
+            self._sum[bin] += value
+
+    def collect(self, comm=None, mode="gather"):
+        """Finalize the sum and return the counts and the sums.
+
+        The "mode" decides whether all processes receive the results
+        or just the root.
+
+        Parameters
+        ----------
+        comm: mpi communicator or None
+            If in parallel, supply this
+        mode: str, optional
+            "gather" or "allgather"
+
+        Returns
+        -------
+        count: array or SparseArray
+            The number of values hitting each pixel
+        sum: array or SparseArray
+            The total of values hitting each pixel
+        """
+        if comm is None:
+            return self._weight, self._sum
+
+        if self.sparse:
+            if mode == "allgather":
+                self._weight = comm.allreduce(self._weight)
+                self._sum = comm.allreduce(self._sum)
+            else:
+                self._weight = comm.reduce(self._weight)
+                self._sum = comm.reduce(self._sum)
+        else:
+            in_place_reduce(self._weight, comm, allreduce=(mode == "allgather"))
+            in_place_reduce(self._sum, comm, allreduce=(mode == "allgather"))
+
+        return self._weight, self._sum
+
+    def run(self, iterator, comm=None, mode="gather"):
+        """Run the whole life cycle on an iterator returning data chunks.
+
+        This is equivalent to calling add_data repeatedly and then collect.
+
+        Parameters
+        ----------
+        iterator: iterator
+            Iterator yielding (pixel, values) pairs
+        comm: MPI comm or None
+            The comm, or None for serial
+
+        Returns
+        -------
+        count: array or SparseArray
+            The number of values hitting each pixel
+        sum: array or SparseArray
+            The total of values hitting each pixel
+        """        
+        for values in iterator:
+            self.add_data(*values)
+        return self.collect(comm=comm, mode=mode)
