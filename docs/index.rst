@@ -16,6 +16,15 @@ This package collects tools which compute weighted statistics on parallel, incre
    api
    example
 
+Installation
+=============
+
+You can install with the command
+
+.. code-block:: bash
+
+    pip install git+https://github.com/LSSTDESC/parallel_statistics/
+
 
 
 Indices and tables
