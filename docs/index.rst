@@ -3,14 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to parallel_stats's documentation!
-==============================================
+Parallel Statistics in Python
+=============================
+
+This package collects tools which compute weighted statistics on parallel, incremental data, i.e. data being read by multiple processors, a chunk at a time, using MPI.
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    api
+   example
 
 
 
