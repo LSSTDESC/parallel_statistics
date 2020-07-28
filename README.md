@@ -15,8 +15,10 @@ All assume that mpi4py is being used among the processes, and are passed a commu
 Installation
 ------------
 
+For now you can install this package using:
+
 ```
-pip install parallel_statistics
+pip install git+https://github.com/LSSTDESC/parallel_statistics/
 ```
 
 Usage
