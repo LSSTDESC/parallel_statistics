@@ -1,7 +1,7 @@
 Overview
 --------
 
-This package collects tools which compute statistics on parallel, incremental data, i.e. data being read by multiple processors, a chunk at a time.  
+This package collects tools which compute weighted statistics on parallel, incremental data, i.e. data being read by multiple processors, a chunk at a time.  
 
 The tools available are:
 - ``ParallelSum``
@@ -30,7 +30,7 @@ The usage pattern for them, and ``ParallelHistogram``, is:
 - Have each process read in their own chunks of data and add it using the ``add_data`` methods
 - Once complete, call the ``collect`` method to get the combined results.
 
-Here's an example of splitting up data from an HDF5 file, using an example from the DESC tomographic challenge:
+Here's an example of splitting up data from an HDF5 file, using an example from the DESC tomographic challenge.  You can run it either on its own, or under MPI with different numbers of processors, and the results should be the same:
 
 ```python
 import mpi4py.MPI
