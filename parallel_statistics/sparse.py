@@ -4,20 +4,38 @@ class SparseArray:
     """
     A sparse 1D array class.
 
-    This is incomplete, and is currently designed only to support the
-    use case in stats.ParallelStats calculator.
+    This not complete, and is mainly designed to support the
+    use case in this package.  The scipy sparse classes are
+    all focused on matrix applications and did not quite fit
+
+    These operations are defined:
+     * setting and getting indices
+
+     * Adding another by another ``SparseArray``
+
+     * Subtracting to another by another ``SparseArray``
+
+     * Multiplying by another ``SparseArray`` with the same indices
+
+     * Dividing by another ``SparseArray`` with the same indices
+
+     * Raising the array to a scalar power
+
+     * Comparing to another ``SparseArray`` with the same indices
+
+    Examples
+    --------
+    >>> s = SparseArray()
+    >>> s[1000] = 1.0
+    >>> s[2000] = 2.0
+    >>> t = s + s
+
 
     Attributes
     ----------
     d : dict
         The dictionary of set indices (keys) and values
 
-    Methods
-    -------
-    to_dense()
-        Make a dense array.
-    to_arrays()
-        Return index and value arrays
     """
     def __init__(self, size=None, dtype=np.float64):
         """Create a sparse array.
@@ -29,20 +47,25 @@ class SparseArray:
             Used only on conversion to dense array, and when checking inputs.
             It can be left as None to have no maximum size, in which case dense
             array output will just use whatever the maximum set index was.
-        dtype: data-type, optional
+        dtype: numpy data-type, optional
         
-        Returns
-        -------
-        SparseArray
         """
         self.d={}
         self.size=size
         self.dtype=dtype
 
     def count_nonzero(self):
+        """The number of non-zero array elements
+
+        Returns
+        ----------
+        int
+        """
         return len(self.d)
 
     def __setitem__(self, index, value):
+        """Set a value in the array
+        """
         if self.size is not None and index>=self.size:
             raise IndexError("")
         self.d[index] = self.dtype(value)
@@ -53,6 +76,17 @@ class SparseArray:
         self.d[index] = value
 
     def __getitem__(self, index):
+        """Get a value in the array
+
+        Parameters
+        ----------
+        index: int
+
+        Returns
+        -------
+        value: dtype
+            Type will be np.float64 by default
+        """
         return self.d.get(index, 0.0)
 
     def __mul__(self, other):

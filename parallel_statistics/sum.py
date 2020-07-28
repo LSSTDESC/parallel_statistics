@@ -3,19 +3,27 @@ from .sparse import SparseArray
 from .tools import AllOne, in_place_reduce
 
 class ParallelSum:
-    """Sum up values in pixels in parallel, on-line.
+    """``ParallelMean`` is a parallel and incremental calculator for sums.
+    "Incremental" means that it does not need
+    to read the entire data set at once, and requires only a single
+    pass through the data.
 
-    See ParallelStatsCalculator for details of the motivation.
-    Like that code you can specify sparse if only a few pixels
-    will be hit.
+    The calculator is designed to work on data in a collection of different bins,
+    for example a map (where the bins are pixels).
+    The usual life-cycle of this class is:
 
-    The usual life-cycle of this class is to create it,
-    repeatedly call add_data on chunks, and then call
-    collect to finalize. You can also call the "run"
-    method with an iterator to combine these.
+    * create an instance of the class
 
-    Unlike that class you cannot yet supply weights here, since
-    we have not yet needed that use case.
+    * repeatedly call ``add_data`` or ``add_datum`` on it to add data points
+
+    * call ``collect``
+
+    You can also call the ``run`` method with an iterator to combine these.
+
+    If only a few indices in the data are expected to be used, the sparse
+    option can be set to change how data is represented and returned to 
+    a sparse form which will use less memory and be faster below a certain
+    size.
     """
     def __init__(self, size, sparse=False):
         """Create the calculator
@@ -56,7 +64,7 @@ class ParallelSum:
             self._sum[bin] += value
 
     def add_data(self, bin, values, weights=None):
-        """Add a chunk of data to the sum.
+        """Add a chunk of data in the same bin to the sum.
 
         Parameters
         ----------

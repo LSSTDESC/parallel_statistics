@@ -5,19 +5,23 @@ from .sparse import SparseArray
 
 
 class ParallelMeanVariance:
-    """ParallelStatsCalculator is a parallel, on-line calculator for mean
-    and variance statistics.  "On-line" means that it does not need
+    """``ParallelMeanVariance`` is a parallel and incremental calculator for mean
+    and variance statistics.  "Incremental" means that it does not need
     to read the entire data set at once, and requires only a single
     pass through the data.
 
-    The calculator is designed for maps and similar systems, so 
-    assumes that it is calculating statistics in a number of different bins
-    (e.g. pixels).
+    The calculator is designed to work on data in a collection of different bins,
+    for example a map (where the bins are pixels).
 
-    The usual life-cycle of this class is to create it,
-    repeatedly call add_data on chunks, and then call
-    collect to finalize. You can also call the calculate
-    method with an iterator to combine these.
+    The usual life-cycle of this class is:
+
+    * create an instance of the class
+
+    * repeatedly call ``add_data`` or ``add_datum`` on it to add data points
+
+    * call ``collect``
+
+    You can also call the ``run`` method with an iterator to combine these.
 
     If only a few indices in the data are expected to be used, the sparse
     option can be set to change how data is represented and returned to 
@@ -32,20 +36,9 @@ class ParallelMeanVariance:
     size: int
         number of pixels or bins
     sparse: bool
-        whether to use sparse representations of arrays
-    
-    Methods
-    -------
-
-    calculate(values_iterator, comm=None)
-        Main public method - run through iterator returning bin, [values] and calculate stats
-    add_data(bin, values)
-        For manual usage - add another set of values for the given bin
-    finalize()
-        For manual usage - after all data is passed in, return counts, means, variances
-    collect(counts, means, variances)
-        For manual usage - combine sequences of the statistics from different processors
-
+        whether are using sparse representations of arrays
+    weighted: bool
+        whether we are using weights
     """
 
     def __init__(self, size, sparse=False, weighted=False):
@@ -118,11 +111,11 @@ class ParallelMeanVariance:
 
 
     def add_data(self, bin, values, weights=None):
-        """Add a sequence of values associated with one pixel.
+        """Add a chunk of data in the same bin.
 
         Add a set of values assinged to a given bin or pixel.
-        Weights must be supplied only if you set "weighted=True"
-        on creation and cannot be otherwise.
+        Weights must be supplied if and only if you set ``weighted=True``
+        on creation.
 
         Parameters
         ----------
@@ -170,10 +163,9 @@ class ParallelMeanVariance:
 
         Parameters
         ----------
-        comm: MPI Communicator or None
-
-        mode: string
-            'gather', or 'allgather'
+        comm: MPI Communicator, optional
+        mode: string, optional
+            'gather' (default), or 'allgather'
 
         Returns
         -------
@@ -299,9 +291,9 @@ class ParallelMeanVariance:
         ----------
         iterator: iterator
             Iterator yieding (bin, values) or (bin, values, weights)
-        comm: MPI comm or None
+        comm: MPI comm, optional
             The comm, or None for serial
-        mode: str
+        mode: str, optional
             "gather" or "allgather"
 
         Returns

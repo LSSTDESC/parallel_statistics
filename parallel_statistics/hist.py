@@ -2,15 +2,26 @@ from .tools import AllOne
 import numpy as np
 
 class ParallelHistogram:
-    """Make a histogram in parallel.
+    """ParallelHistogram is a parallel and incremental calculator histograms.
+    "Incremental" means that it does not need
+    to read the entire data set at once, and requires only a single
+    pass through the data.
+
+    The usual life-cycle of this class is:
+
+    * create an instance of the class
+
+    * repeatedly call ``add_data`` on it to add data points
+
+    * call ``collect``
+
+    You can also call the ``run`` method with an iterator to combine these.
+
+    Since histograms are usually relatively small, sparse arrays are not
+    enabled for this class.
 
     Bin edges must be pre-defined and values
     outside them will be ignored.
-
-    The usual life-cycle of this class is to create it,
-    repeatedly call add_data on chunks, and then call
-    collect to finalize. You can also call the "run"
-    method with an iterator to combine these.
     """
     def __init__(self, edges):
         """Create the histogram.
