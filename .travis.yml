@@ -9,7 +9,7 @@ python:
 
 install:
   - pip install numpy
-  - pip install git+https://github.com/rmjarvis/MockMPI/
+  - pip install git+https://github.com/rmjarvis/MockMPI@exec-args
 
 cache: pip
 
