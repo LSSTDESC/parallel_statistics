@@ -24,6 +24,8 @@ class ParallelSum:
     option can be set to change how data is represented and returned to 
     a sparse form which will use less memory and be faster below a certain
     size.
+
+    Bins which have no objects in will be given weight=0 and sum=0.
     """
     def __init__(self, size, sparse=False):
         """Create the calculator

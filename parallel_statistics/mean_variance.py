@@ -28,6 +28,9 @@ class ParallelMeanVariance:
     a sparse form which will use less memory and be faster below a certain
     size.
 
+    Bins which have no objects in will be given weight=0, mean=nan, and var=nan.
+    Bins which have only one object in will be given var=nan.
+
     The algorithm here is basd on Schubert & Gertz 2018,
     Numerically Stable Parallel Computation of (Co-)Variance
 

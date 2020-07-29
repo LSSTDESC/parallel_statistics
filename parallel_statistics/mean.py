@@ -23,6 +23,8 @@ class ParallelMean(ParallelSum):
     option can be set to change how data is represented and returned to 
     a sparse form which will use less memory and be faster below a certain
     size.
+
+    Bins which have no objects in will be given weight=0 and mean=nan.
     """
     def collect(self, comm=None, mode="gather"):
         """Finalize the sum and return the counts and the means.
@@ -45,5 +47,8 @@ class ParallelMean(ParallelSum):
             The mean of values hitting each pixel
         """
         weights, sums = super().collect(comm=comm, mode=mode)
-        means = sums / weights
+        if weights is not None:
+            means = sums / weights
+        else:
+            means = None
         return weights, means

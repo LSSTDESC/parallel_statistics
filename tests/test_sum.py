@@ -44,7 +44,7 @@ def run_sum(comm, nbin, ndata, mode):
         assert np.allclose(sums, true_sums, equal_nan=True)
 
 
-def run_sum_weights(comm, nbin, ndata, mode):
+def run_sum_weights(comm, nbin, ndata, mode, sparse):
     nproc = 1 if comm is None else comm.size
     rank = 0 if comm is None else comm.rank
 
@@ -69,13 +69,21 @@ def run_sum_weights(comm, nbin, ndata, mode):
     my_weights = weights[rank]
 
 
-    calc = ParallelSum(size=nbin)
+    calc = ParallelSum(size=nbin, sparse=sparse)
     for i in range(ndata):
         calc.add_datum(my_bins[i], my_data[i], my_weights[i])
 
     counts, sums = calc.collect(comm, mode=mode)
 
     if (rank == 0) or (mode == 'allgather'):
+        if sparse:
+            p, v = counts.to_arrays()
+            counts = np.zeros(nbin)
+            counts[p] = v
+            p, v = sums.to_arrays()
+            sums = np.zeros(nbin)
+            sums[p] = v
+
         true_counts = [weights[(bins==i)].sum() for i in range(nbin)]
         true_sums = [
             np.dot(data[bins==i], weights[bins==i]) 
@@ -98,5 +106,6 @@ def test_sum(nbin, ndata, nproc, mode):
 @pytest.mark.parametrize("ndata", [1, 10, 100])
 @pytest.mark.parametrize("nproc", [1, 2, 5])
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
-def test_sum_weights(nbin, ndata, nproc, mode):
-    mock_mpiexec(nproc, run_sum_weights, args=[nbin, ndata, mode])
+@pytest.mark.parametrize("sparse", [True, False])
+def test_sum_weights(nbin, ndata, nproc, mode, sparse):
+    mock_mpiexec(nproc, run_sum_weights, args=[nbin, ndata, mode, sparse])
