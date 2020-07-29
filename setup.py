@@ -16,7 +16,7 @@ setup(
     author='Joe Zuntz',  # Optional
     author_email='joe.zuntz@ed.ac.uk',  # Optional
     classifiers=[
-        'Development Status :: 3 - Beta',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 3',
