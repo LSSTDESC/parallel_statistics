@@ -46,7 +46,7 @@ class ParallelSum:
         self._sum = t(size)
         self._weight = t(size)
 
-    def add_datum(self, bin, value, weight):
+    def add_datum(self, bin, value, weight=None):
         """Add a single data point to the sum.
 
         Parameters
@@ -59,9 +59,8 @@ class ParallelSum:
         if weight is None:
             weight = 1
 
-        for value in values:
-            self._weight[bin] += weight
-            self._sum[bin] += value
+        self._weight[bin] += weight
+        self._sum[bin] += value * weight
 
     def add_data(self, bin, values, weights=None):
         """Add a chunk of data in the same bin to the sum.
@@ -77,9 +76,10 @@ class ParallelSum:
         """
         if weights is None:
             weights = AllOne()
-        for value in values:
-            self._weight[bin] += weights[bin]
-            self._sum[bin] += value
+
+        for i, value in enumerate(values):
+            self._weight[bin] += weights[i]
+            self._sum[bin] += value * weights[i]
 
     def collect(self, comm=None, mode="gather"):
         """Finalize the sum and return the counts and the sums.

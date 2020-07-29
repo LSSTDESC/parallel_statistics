@@ -1,10 +1,10 @@
-from parallel_statistics import ParallelSum
+from parallel_statistics import ParallelMean
 from mock_mpi import mock_mpiexec
 import numpy as np
 import pytest
 
 
-def run_sum(comm, nbin, ndata, mode):
+def run_mean(comm, nbin, ndata, mode):
     nproc = 1 if comm is None else comm.size
     rank = 0 if comm is None else comm.rank
 
@@ -26,25 +26,25 @@ def run_sum(comm, nbin, ndata, mode):
     my_bins = bins[rank]
 
 
-    calc = ParallelSum(size=nbin)
+    calc = ParallelMean(size=nbin)
     for i in range(ndata):
         calc.add_datum(my_bins[i], my_data[i])
 
     print("local counts", rank, calc._weight)
-    counts, sums = calc.collect(comm, mode=mode)
+    counts, means = calc.collect(comm, mode=mode)
 
     if (rank == 0) or (mode == 'allgather'):
         true_counts = [(bins==i).sum() for i in range(nbin)]
-        true_sums = [data[bins==i].sum() for i in range(nbin)]
+        true_means = [data[bins==i].mean() for i in range(nbin)]
         print("true counts: ", true_counts)
-        print("true sums:", true_sums)
+        print("true means:", true_means)
         print("est counts: ", counts)
-        print("est sums:", sums)
+        print("est means:", means)
         assert np.allclose(counts, true_counts, equal_nan=True)
-        assert np.allclose(sums, true_sums, equal_nan=True)
+        assert np.allclose(means, true_means, equal_nan=True)
 
 
-def run_sum_weights(comm, nbin, ndata, mode):
+def run_mean_weights(comm, nbin, ndata, mode):
     nproc = 1 if comm is None else comm.size
     rank = 0 if comm is None else comm.rank
 
@@ -69,34 +69,40 @@ def run_sum_weights(comm, nbin, ndata, mode):
     my_weights = weights[rank]
 
 
-    calc = ParallelSum(size=nbin)
+    calc = ParallelMean(size=nbin)
     for i in range(ndata):
         calc.add_datum(my_bins[i], my_data[i], my_weights[i])
 
-    counts, sums = calc.collect(comm, mode=mode)
+    counts, means = calc.collect(comm, mode=mode)
 
     if (rank == 0) or (mode == 'allgather'):
         true_counts = [weights[(bins==i)].sum() for i in range(nbin)]
-        true_sums = [
-            np.dot(data[bins==i], weights[bins==i]) 
-            for i in range(nbin)]
+        true_means = []
+        for i in range(nbin):
+            w = weights[bins==i]
+            if w.sum() == 0:
+                mu = np.nan
+            else:
+                mu = np.average(data[bins==i], weights=w)
+            true_means.append(mu)
+
         print("true counts: ", true_counts)
-        print("true sums:", true_sums)
+        print("true means:", true_means)
         print("est counts: ", counts)
-        print("est sums:", sums)
+        print("est means:", means)
         assert np.allclose(counts, true_counts, equal_nan=True)
-        assert np.allclose(sums, true_sums, equal_nan=True)
+        assert np.allclose(means, true_means, equal_nan=True)
 
 @pytest.mark.parametrize("nbin", [1, 10, 50])
 @pytest.mark.parametrize("ndata", [1, 10, 100])
 @pytest.mark.parametrize("nproc", [1, 2, 5])
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
-def test_sum(nbin, ndata, nproc, mode):
-    mock_mpiexec(nproc, run_sum, args=[nbin, ndata, mode])
+def test_mean(nbin, ndata, nproc, mode):
+    mock_mpiexec(nproc, run_mean, args=[nbin, ndata, mode])
 
 @pytest.mark.parametrize("nbin", [1, 10, 50])
 @pytest.mark.parametrize("ndata", [1, 10, 100])
 @pytest.mark.parametrize("nproc", [1, 2, 5])
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
-def test_sum_weights(nbin, ndata, nproc, mode):
-    mock_mpiexec(nproc, run_sum_weights, args=[nbin, ndata, mode])
+def test_mean_weights(nbin, ndata, nproc, mode):
+    mock_mpiexec(nproc, run_mean_weights, args=[nbin, ndata, mode])
