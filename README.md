@@ -18,11 +18,16 @@ Installation
 For now you can install this package using:
 
 ```
-pip install git+https://github.com/LSSTDESC/parallel_statistics/
+pip install parallel_statistics
 ```
 
-Usage
------
+Documentation
+-------------
+
+Documentation can be found at https://parallel-statistics.readthedocs.io/
+
+Example
+-------
 
 The three tools ``ParallelSum``, ``ParallelMean``, and ``ParallelMeanVariance`` compute statistics in bins, and you add data to them per bin.
 
