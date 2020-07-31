@@ -23,7 +23,7 @@ You can install with the command
 
 .. code-block:: bash
 
-    pip install git+https://github.com/LSSTDESC/parallel_statistics/
+    pip install parallel_statistics
 
 
 
