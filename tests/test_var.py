@@ -1,5 +1,5 @@
 from parallel_statistics import ParallelMeanVariance
-from mock_mpi import mock_mpiexec
+from mockmpi import mock_mpiexec
 import numpy as np
 import pytest
 
