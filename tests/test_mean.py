@@ -108,7 +108,7 @@ def run_mean_weights(comm, nbin, ndata, mode, sparse):
 @pytest.mark.parametrize("nproc", [1, 2, 5])
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
 def test_mean(nbin, ndata, nproc, mode):
-    mock_mpiexec(nproc, run_mean, args=[nbin, ndata, mode])
+    mock_mpiexec(nproc, run_mean, nbin, ndata, mode)
 
 @pytest.mark.parametrize("nbin", [1, 10, 50])
 @pytest.mark.parametrize("ndata", [1, 10, 100])
@@ -116,4 +116,4 @@ def test_mean(nbin, ndata, nproc, mode):
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
 @pytest.mark.parametrize("sparse", [True, False])
 def test_mean_weights(nbin, ndata, nproc, mode, sparse):
-    mock_mpiexec(nproc, run_mean_weights, args=[nbin, ndata, mode, sparse])
+    mock_mpiexec(nproc, run_mean_weights, nbin, ndata, mode, sparse)
