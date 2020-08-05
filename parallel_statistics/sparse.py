@@ -64,11 +64,27 @@ class SparseArray:
         return len(self.d)
 
     def __setitem__(self, index, value):
-        """Set a value in the array
+        """Set a value in the array.
         """
-        if self.size is not None and index>=self.size:
-            raise IndexError("")
-        self.d[index] = self.dtype(value)
+        if isinstance(index, np.ndarray):
+            if index.size == 0:
+                return
+            m = index.max()
+            if self.size is not None and m >= self.size:
+                raise IndexError(f"Index {m} too large in sparse array size {self.size}")
+            if isinstance(value, np.ndarray):
+                for i, v in zip(index, value):
+                    self.d[i] = self.dtype(v)
+            else:
+                v = self.dtype(value)
+                for i in index:
+                    self.d[i] = v
+
+        else:
+            if self.size is not None and index>=self.size:
+                raise IndexError("Index value too large")
+
+            self.d[index] = self.dtype(value)
 
     def _set_direct(self, index, value):
         # Like __setitem__ but bypassing the checks
@@ -204,5 +220,3 @@ class SparseArray:
         indices = indices[order]
         values = values[order]
         return indices, values
-
-

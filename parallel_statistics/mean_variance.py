@@ -2,7 +2,7 @@
 
 import numpy as np
 from .sparse import SparseArray
-
+from .tools import AllOne
 
 class ParallelMeanVariance:
     """``ParallelMeanVariance`` is a parallel and incremental calculator for mean
@@ -29,7 +29,6 @@ class ParallelMeanVariance:
     size.
 
     Bins which have no objects in will be given weight=0, mean=nan, and var=nan.
-    Bins which have only one object in will be given var=nan.
 
     The algorithm here is basd on Schubert & Gertz 2018,
     Numerically Stable Parallel Computation of (Co-)Variance
@@ -40,16 +39,11 @@ class ParallelMeanVariance:
         number of pixels or bins
     sparse: bool
         whether are using sparse representations of arrays
-    weighted: bool
-        whether we are using weights
     """
 
-    def __init__(self, size, sparse=False, weighted=False):
+    def __init__(self, size, sparse=False):
         """Create a parallel, on-line mean and variance calcuator.
 
-        Note that unlike other calculators you must specify in advance
-        whether this is weighted or not, since we have to pre-allocate
-        an additional array.
         
         Parameters
         ----------
@@ -57,12 +51,9 @@ class ParallelMeanVariance:
             The number of bins (or pixels) in which statistics will be calculated
         sparse: bool, optional
             Whether to use a sparse representation of the arrays, internally and returned.
-        weighted: bool, optional
-            Whether to expect weights along with the data and produce weighted stats
         """
         self.size = size
         self.sparse = sparse
-        self.weighted = weighted
 
         if sparse:
             t = SparseArray
@@ -73,10 +64,7 @@ class ParallelMeanVariance:
         self._weight = t(size)
         self._M2 = t(size)
 
-        if self.weighted:
-            self._W2 = t(size)
-
-    def add_datum(self, bin, value, weight=None):
+    def add_datum(self, bin, value, weight=1):
         """Add a single data point to the sum.
 
         Parameters
@@ -88,37 +76,22 @@ class ParallelMeanVariance:
         weight: float
             Optional, default=1, a weight for this data point
         """
-        if self.weighted:
-            if weight is None:
-                raise ValueError("Weights expected in ParallelStatsCalculator")
+        if weight == 0:
+            return
 
-            if weight == 0:
-                return
-
-            self._weight[bin] += weight
-            delta = value - self._mean[bin]
-            self._mean[bin] += (weight / self._weight[bin]) * delta
-            delta2 = value - self._mean[bin]
-            self._M2[bin] += weight * delta * delta2
-            self._W2[bin] += weight * weight
-
-        else:
-            if weight is not None:
-                raise ValueError("No weights expected in ParallelStatsCalculator")
-
-            self._weight[bin] += 1
-            delta = value - self._mean[bin]
-            self._mean[bin] += delta / self._weight[bin]
-            delta2 = value - self._mean[bin]
-            self._M2[bin] += delta * delta2
+        self._weight[bin] += weight
+        delta = value - self._mean[bin]
+        self._mean[bin] += (weight / self._weight[bin]) * delta
+        delta2 = value - self._mean[bin]
+        self._M2[bin] += weight * delta * delta2
 
 
     def add_data(self, bin, values, weights=None):
         """Add a chunk of data in the same bin.
 
         Add a set of values assinged to a given bin or pixel.
-        Weights must be supplied if and only if you set ``weighted=True``
-        on creation.
+        Weights may be supplied, and if they are not will be
+        set to 1.
 
         Parameters
         ----------
@@ -129,28 +102,17 @@ class ParallelMeanVariance:
         weights: sequence, optional
             A sequence (e.g. array or list) of weights per value
         """
-        if self.weighted:
-            if weights is None:
-                raise ValueError("Weights expected in ParallelStatsCalculator")
+        if weights is None:
+            weights = AllOne()
 
-            for value, w in zip(values, weights):
-                if w == 0:
-                    continue
-                self._weight[bin] += w
-                delta = value - self._mean[bin]
-                self._mean[bin] += (w / self._weight[bin]) * delta
-                delta2 = value - self._mean[bin]
-                self._M2[bin] += w * delta * delta2
-                self._W2[bin] += w * w
-        else:
-            if weights is not None:
-                raise ValueError("No weights expected in ParallelStatsCalculator")
-            for value in values:
-                self._weight[bin] += 1
-                delta = value - self._mean[bin]
-                self._mean[bin] += delta / self._weight[bin]
-                delta2 = value - self._mean[bin]
-                self._M2[bin] += delta * delta2
+        for value, w in zip(values, weights):
+            if w == 0:
+                continue
+            self._weight[bin] += w
+            delta = value - self._mean[bin]
+            self._mean[bin] += (w / self._weight[bin]) * delta
+            delta2 = value - self._mean[bin]
+            self._M2[bin] += w * delta * delta2
 
     @np.errstate(divide='ignore', invalid='ignore')
     def collect(self, comm=None, mode="gather"):
@@ -182,16 +144,10 @@ class ParallelMeanVariance:
         """
         # Serial version - just take the values from this processor,
         # set the values where the weight is zero, and return
-        if comm is None:
-            results = self._weight, self._mean, self._get_variance()
-            very_bad = self._weight == 0
-            # Deal with pixels that have been hit, but only with
-            # zero weight
-            if self.sparse:
-                for i in very_bad:
-                    self._mean[i] = np.nan
-            else:
-                self._mean[very_bad] = np.nan
+        if comm is None or comm.Get_size()==1:
+            variance = self._M2 / self._weight
+            self._mean[self._weight == 0] = np.nan
+            results = self._weight, self._mean, variance
 
             del self._M2
             del self._weight
@@ -247,6 +203,7 @@ class ParallelMeanVariance:
             weight = self._weight
             mean = self._mean
             sq = self._M2
+
             if not self.sparse:
                 # In the sparse case MPI4PY unpickles and creates a new variable.
                 # In the dense case we have to pre-allocate it.
@@ -261,6 +218,7 @@ class ParallelMeanVariance:
                     w = comm.recv(source=i)
                     m = comm.recv(source=i)
                     s = comm.recv(source=i)
+
                 else:
                     comm.Recv(w, source=i)
                     comm.Recv(m, source=i)
@@ -272,8 +230,9 @@ class ParallelMeanVariance:
                 weight, mean, sq = self._accumulate(weight, mean, sq, w, m, s)
 
             # get the population variance from the squared deviations
-            # and set the mean to nan where we can't estimate it.
+            # and set the it to nan where we can't estimate it.
             variance = sq / weight
+            mean[weight==0] = np.nan
 
         if mode == "allgather":
             if self.sparse:
@@ -312,28 +271,22 @@ class ParallelMeanVariance:
             self.add_data(*values)
         return self.collect(comm=comm, mode=mode)
 
-    def _get_variance(self):
-        # Compute the variance from the previously
-        # computed squared deviations. 
-        variance = self._M2 / self._weight
-        if not self.sparse:
-            if self.weighted:
-                neff = self._weight ** 2 / self._W2
-                bad = neff < 1.000001
-            else:
-                bad = self._weight < 2
-            variance[bad] = np.nan
-
-        return variance
-
 
     def _accumulate(self, weight, mean, sq, w, m, s):
         # Algorithm from Shubert and Gertz.
-        weight = weight + w
-        delta = m - mean
-        mean = mean + (w / weight) * delta
-        delta2 = m - mean
-        sq = sq + s + w * delta * delta2
+        if self.sparse:
+            weight = weight + w
+            delta = m - mean
+            mean = mean + (w / weight) * delta
+            delta2 = m - mean
+            sq = sq + s + w * delta * delta2
+        else:
+            good = w!=0
+            weight[good] = weight[good] + w[good]
+            delta = m[good] - mean[good]
+            mean[good] = mean[good] + (w[good] / weight[good]) * delta
+            delta2 = m[good] - mean[good]
+            sq[good] = sq[good] + s[good] + w[good] * delta * delta2
 
         return weight, mean, sq
 

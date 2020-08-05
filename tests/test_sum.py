@@ -1,5 +1,5 @@
 from parallel_statistics import ParallelSum
-from mock_mpi import mock_mpiexec
+from mockmpi import mock_mpiexec
 import numpy as np
 import pytest
 
@@ -100,7 +100,7 @@ def run_sum_weights(comm, nbin, ndata, mode, sparse):
 @pytest.mark.parametrize("nproc", [1, 2, 5])
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
 def test_sum(nbin, ndata, nproc, mode):
-    mock_mpiexec(nproc, run_sum, args=[nbin, ndata, mode])
+    mock_mpiexec(nproc, run_sum, nbin, ndata, mode)
 
 @pytest.mark.parametrize("nbin", [1, 10, 50])
 @pytest.mark.parametrize("ndata", [1, 10, 100])
@@ -108,4 +108,4 @@ def test_sum(nbin, ndata, nproc, mode):
 @pytest.mark.parametrize("mode", ['gather', 'allgather'])
 @pytest.mark.parametrize("sparse", [True, False])
 def test_sum_weights(nbin, ndata, nproc, mode, sparse):
-    mock_mpiexec(nproc, run_sum_weights, args=[nbin, ndata, mode, sparse])
+    mock_mpiexec(nproc, run_sum_weights, nbin, ndata, mode, sparse)

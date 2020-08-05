@@ -1,4 +1,5 @@
 import sys
+from itertools import repeat
 
 class AllOne:
     """
@@ -6,6 +7,9 @@ class AllOne:
     """
     def __getitem__(self, index):
         return 1
+
+    def __iter__(self):
+        return repeat(1)
 
 def in_place_reduce(data, comm, allreduce=False, root=0):
     """
