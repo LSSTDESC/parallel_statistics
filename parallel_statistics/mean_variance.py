@@ -103,16 +103,21 @@ class ParallelMeanVariance:
             A sequence (e.g. array or list) of weights per value
         """
         if weights is None:
-            weights = AllOne()
-
-        for value, w in zip(values, weights):
-            if w == 0:
-                continue
-            self._weight[bin] += w
-            delta = value - self._mean[bin]
-            self._mean[bin] += (w / self._weight[bin]) * delta
-            delta2 = value - self._mean[bin]
-            self._M2[bin] += w * delta * delta2
+            for value in values:
+                self._weight[bin] += 1
+                delta = value - self._mean[bin]
+                self._mean[bin] += delta / self._weight[bin]
+                delta2 = value - self._mean[bin]
+                self._M2[bin] += delta * delta2
+        else:
+            for value, w in zip(values, weights):
+                if w == 0:
+                    continue
+                self._weight[bin] += w
+                delta = value - self._mean[bin]
+                self._mean[bin] += (w / self._weight[bin]) * delta
+                delta2 = value - self._mean[bin]
+                self._M2[bin] += w * delta * delta2
 
     @np.errstate(divide='ignore', invalid='ignore')
     def collect(self, comm=None, mode="gather"):
