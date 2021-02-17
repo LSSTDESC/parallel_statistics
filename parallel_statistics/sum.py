@@ -77,11 +77,11 @@ class ParallelSum:
             Optional, weights per value
         """
         if weights is None:
-            weights = AllOne()
-
-        for i, value in enumerate(values):
-            self._weight[bin] += weights[i]
-            self._sum[bin] += value * weights[i]
+            self._weight[bin] += np.size(values)
+            self._sum[bin] += np.sum(values)
+        else:
+            self._weight[bin] += np.sum(weights)
+            self._sum[bin] += np.dot(values, weights)
 
     def collect(self, comm=None, mode="gather"):
         """Finalize the sum and return the counts and the sums.
