@@ -8,6 +8,8 @@ Parallel Statistics in Python
 
 This package collects tools which compute weighted statistics on parallel, incremental data, i.e. data being read by multiple processors, a chunk at a time, using MPI.
 
+The ParallelMeanVariance tool will be much faster if numba is installed.
+
 
 .. toctree::
    :maxdepth: 2
