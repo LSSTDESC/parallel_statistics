@@ -51,6 +51,34 @@ def run_mean_variance(comm, nbin, ndata, mode):
         assert np.allclose(means, true_means, equal_nan=True)
         assert np.allclose(vars, true_vars, equal_nan=True)
 
+    # Again but with add_data
+    calc = ParallelMeanVariance(size=nbin)
+
+    for b in range(nbin):
+        calc.add_data(b, my_data[my_bins==b])
+
+    print("local counts", rank, calc._weight)
+    counts, means, vars = calc.collect(comm, mode=mode)
+
+    if (rank == 0) or (mode == 'allgather'):
+        true_counts = np.array([(bins==i).sum() for i in range(nbin)])
+        true_means =  np.array([data[bins==i].mean() for i in range(nbin)])
+        true_vars =   np.array([data[bins==i].var() for i in range(nbin)])
+        # numpy returns zero for the variance of a single value.
+        # we prefer to do np.nan
+        true_means[true_counts<1] = np.nan
+        true_vars[true_counts<1] = np.nan
+        print("true counts: ", true_counts)
+        print("true means:", true_means)
+        print("true vars:", true_vars)
+        print("est counts: ", counts)
+        print("est means:", means)
+        print("est vars:", vars)
+        assert np.allclose(counts, true_counts, equal_nan=True)
+        assert np.allclose(means, true_means, equal_nan=True)
+        assert np.allclose(vars, true_vars, equal_nan=True)
+
+
 def weighted_var(values, weights):
     """
     Return the weighted average and standard deviation - naive formula
@@ -133,6 +161,59 @@ def run_mean_variance_weights(comm, nbin, ndata, mode, sparse):
         assert np.allclose(counts, true_counts, equal_nan=True)
         assert np.allclose(means, true_means, equal_nan=True)
         assert np.allclose(vars, true_vars, equal_nan=True)
+
+    # Again but with add_data
+    calc = ParallelMeanVariance(size=nbin, sparse=sparse)
+    print("add_data version:")
+    print("sparse:", sparse)
+
+    for b in range(nbin):
+        calc.add_data(b, my_data[my_bins==b], my_weights[my_bins==b])
+
+    print("local counts", rank, calc._weight)
+    counts, means, vars = calc.collect(comm, mode=mode)
+    print(type(counts))
+
+    if (rank == 0) or (mode == 'allgather'):
+
+        if sparse:
+            p, v = counts.to_arrays()
+            counts = np.zeros(nbin)
+            counts[p] = v
+            p, v = means.to_arrays()
+            means = np.repeat(np.nan, nbin)
+            means[p] = v
+            p, v = vars.to_arrays()
+            vars = np.repeat(np.nan, nbin)
+            vars[p] = v
+
+        true_counts = [weights[(bins==i)].sum() for i in range(nbin)]
+        true_means = []
+        true_vars = []
+        for i in range(nbin):
+            w = weights[bins==i]
+            if w.sum() == 0:
+                mu = np.nan
+                v = np.nan
+            else:
+                mu = np.average(data[bins==i], weights=w)
+                v = weighted_var(data[bins==i], w)
+            true_means.append(mu)
+            true_vars.append(v)
+
+        print("true counts: ", true_counts)
+        print("true means:", true_means)
+        print("true vars:", true_vars)
+        print("est counts: ", counts)
+        print("est means:", means)
+        print("est vars:", vars)
+        assert np.allclose(counts, true_counts, equal_nan=True)
+        assert np.allclose(means, true_means, equal_nan=True)
+        assert np.allclose(vars, true_vars, equal_nan=True)
+
+
+
+
 
 @pytest.mark.parametrize("nbin", [1, 10, 50])
 @pytest.mark.parametrize("ndata", [1, 10, 100])

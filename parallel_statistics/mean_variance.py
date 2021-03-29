@@ -86,7 +86,6 @@ class ParallelMeanVariance:
         self._weight = t(size)
         self._M2 = t(size)
 
-    @jit
     def add_datum(self, bin, value, weight=1):
         """Add a single data point to the sum.
 
@@ -125,18 +124,19 @@ class ParallelMeanVariance:
             A sequence (e.g. array or list) of weights per value
         """
         if weights is None:
-            self._add_data_noweight(bin, values, self._weight, self._mean, self._M2)
+            if self.sparse:
+                self._add_data_noweight_sparse(bin, values, self._weight, self._mean, self._M2)
+            else:
+                self._add_data_noweight_dense(bin, values, self._weight, self._mean, self._M2)
         else:
-            self._add_data_weight(
-                bin, values, weights, self._weight, self._mean, self._M2
-            )
-
+            if self.sparse:
+                self._add_data_weight_sparse(bin, values, weights, self._weight, self._mean, self._M2)
+            else:
+                self._add_data_weight_dense(bin, values, weights, self._weight, self._mean, self._M2)
     # To be able to use Numba's jit tool these seem to have to be static methods
     # so that the type of everything can be inferred.
     # The Numba version seems to be several hundred times faster after first compilation
-    @staticmethod
-    @jit
-    def _add_data_noweight(bin, values, _weight, _mean, _M2):
+    def _add_data_noweight_core(bin, values, _weight, _mean, _M2):
         n = len(values)
         for i in range(n):
             value = values[i]
@@ -146,9 +146,13 @@ class ParallelMeanVariance:
             delta2 = value - _mean[bin]
             _M2[bin] += delta * delta2
 
-    @staticmethod
-    @jit
-    def _add_data_weight(bin, values, weights, _weight, _mean, _M2):
+    # We also can't use the Numba version on the sparse arrays, so we need to 
+    # make a JIT and non-JIT version here.
+    _add_data_noweight_sparse = staticmethod(_add_data_noweight_core)
+    _add_data_noweight_dense = staticmethod(jit(_add_data_noweight_core))
+
+
+    def _add_data_weight_core(bin, values, weights, _weight, _mean, _M2):
         n = len(values)
         for i in range(n):
             w = weights[i]
@@ -160,6 +164,11 @@ class ParallelMeanVariance:
             _mean[bin] += (w / _weight[bin]) * delta
             delta2 = value - _mean[bin]
             _M2[bin] += w * delta * delta2
+
+    # Same as above for the weighted version
+    _add_data_weight_sparse = staticmethod(_add_data_weight_core)
+    _add_data_weight_dense = staticmethod(jit(_add_data_weight_core))
+
 
     @np.errstate(divide="ignore", invalid="ignore")
     def collect(self, comm=None, mode="gather"):
@@ -321,6 +330,7 @@ class ParallelMeanVariance:
             self.add_data(*values)
         return self.collect(comm=comm, mode=mode)
 
+    @staticmethod
     def _accumulate_sparse(weight, mean, sq, w, m, s):
         # Algorithm from Shubert and Gertz.
         weight = weight + w
