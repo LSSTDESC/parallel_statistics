@@ -14,12 +14,12 @@ import os
 # In either of these cases we replace the numba jit decorator with an identity
 # decorator
 if os.environ.get("PAR_STATS_NO_JIT", "0") != "0":
-    jit = lambda p: p
+    njit = lambda p: p
 else:
     try:
-        from numba import jit
+        from numba import njit
     except:
-        jit = lambda p: p
+        njit = lambda p: p
 
 
 class ParallelMeanVariance:
@@ -149,7 +149,7 @@ class ParallelMeanVariance:
     # We also can't use the Numba version on the sparse arrays, so we need to 
     # make a JIT and non-JIT version here.
     _add_data_noweight_sparse = staticmethod(_add_data_noweight_core)
-    _add_data_noweight_dense = staticmethod(jit(_add_data_noweight_core))
+    _add_data_noweight_dense = staticmethod(njit(_add_data_noweight_core))
 
 
     def _add_data_weight_core(bin, values, weights, _weight, _mean, _M2):
@@ -167,7 +167,7 @@ class ParallelMeanVariance:
 
     # Same as above for the weighted version
     _add_data_weight_sparse = staticmethod(_add_data_weight_core)
-    _add_data_weight_dense = staticmethod(jit(_add_data_weight_core))
+    _add_data_weight_dense = staticmethod(njit(_add_data_weight_core))
 
 
     @np.errstate(divide="ignore", invalid="ignore")
