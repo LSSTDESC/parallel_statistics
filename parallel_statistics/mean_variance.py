@@ -283,10 +283,7 @@ class ParallelMeanVariance:
                 # Add this to the overall sample.  This is very similar
                 # to what's done in add_data except it combines all the
                 # pixels/bins at once.
-                if self.sparse:
-                    weight, mean, sq = self._accumulate_sparse(weight, mean, sq, w, m, s)
-                else:
-                    weight, mean, sq = self._accumulate_dense(weight, mean, sq, w, m, s)
+                weight, mean, sq = self._accumulate(weight, mean, sq, w, m, s)
 
             # get the population variance from the squared deviations
             # and set the it to nan where we can't estimate it.
@@ -330,26 +327,20 @@ class ParallelMeanVariance:
             self.add_data(*values)
         return self.collect(comm=comm, mode=mode)
 
-    @staticmethod
-    def _accumulate_sparse(weight, mean, sq, w, m, s):
+    def _accumulate(self, weight, mean, sq, w, m, s):
         # Algorithm from Shubert and Gertz.
-        weight = weight + w
-        delta = m - mean
-        mean = mean + (w / weight) * delta
-        delta2 = m - mean
-        sq = sq + s + w * delta * delta2
-
-        return weight, mean, sq
-
-    @staticmethod
-    @jit
-    def _accumulate_dense(weight, mean, sq, w, m, s):
-        # Algorithm from Shubert and Gertz.
-        good = w != 0
-        weight[good] = weight[good] + w[good]
-        delta = m[good] - mean[good]
-        mean[good] = mean[good] + (w[good] / weight[good]) * delta
-        delta2 = m[good] - mean[good]
-        sq[good] = sq[good] + s[good] + w[good] * delta * delta2
+        if self.sparse:
+            weight = weight + w
+            delta = m - mean
+            mean = mean + (w / weight) * delta
+            delta2 = m - mean
+            sq = sq + s + w * delta * delta2
+        else:
+            good = w != 0
+            weight[good] = weight[good] + w[good]
+            delta = m[good] - mean[good]
+            mean[good] = mean[good] + (w[good] / weight[good]) * delta
+            delta2 = m[good] - mean[good]
+            sq[good] = sq[good] + s[good] + w[good] * delta * delta2
 
         return weight, mean, sq
