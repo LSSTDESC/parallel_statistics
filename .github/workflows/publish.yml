@@ -1,0 +1,25 @@
+name: Upload to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  Upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup python
+      uses: actions/setup-python@v4
+
+    - name: Build wheel and source tarball
+      run: |
+        python setup.py sdist
+
+    - name: Publish to Real PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_PARSTATS_UPLOAD }}

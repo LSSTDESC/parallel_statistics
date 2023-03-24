@@ -11,3 +11,5 @@ __all__ = [
     "ParallelMeanVariance",
     "SparseArray",
 ]
+
+__version__="0.13"
