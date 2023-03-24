@@ -8,7 +8,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='parallel_statistics',
-    version='0.12',
+    version='0.13',
     description='Calculating basic statistics in parallel, incrementally',
     long_description=long_description,
     long_description_content_type='text/markdown',
